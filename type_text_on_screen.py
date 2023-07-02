@@ -123,7 +123,7 @@ class TypeTextOnScreen:
                 if new_leading_spaces_count > leading_spaces_count:
                     output_list.append(write_line.format(" " * (new_leading_spaces_count - leading_spaces_count)))
 
-                if new_leading_spaces_count > leading_spaces_count:
+                if new_leading_spaces_count < leading_spaces_count:
                     output_list.append(self.__press_special_button(self.BACKSPACE,
                                                                    leading_spaces_count - new_leading_spaces_count))
 
