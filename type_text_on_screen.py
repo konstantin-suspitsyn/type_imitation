@@ -17,7 +17,7 @@ class TypeTextOnScreen:
         "\t": TAB,
     }
 
-    def __init__(self, save_file_path: str, open_file_path) -> None:
+    def __init__(self, open_file_path: str, save_file_path: str) -> None:
         """
         Get path of files to open and to save
         :param save_file_path:
@@ -157,9 +157,9 @@ class TypeTextOnScreen:
 
 
 if __name__ == "__main__":
-    input_path = r""
-    output_path = r""
+    input_path = r"test_scripts/sql.sql"
+    output_path = r"new_file.py"
 
-    test = TypeTextOnScreen(output_path, input_path)
+    test = TypeTextOnScreen(input_path, output_path)
     test.write_file()
 
