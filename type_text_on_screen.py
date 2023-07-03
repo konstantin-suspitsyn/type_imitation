@@ -11,6 +11,7 @@ class TypeTextOnScreen:
     BACKSPACE = r"backspace"
     TAB = r"tab"
     ENTER = r"enter"
+    ESC = r"esc"
 
     CHARACTER_CHANGE_CHARS_TO_RPA_COMMANDS = {
         "\n": ENTER,
@@ -73,6 +74,27 @@ class TypeTextOnScreen:
         """
         return "pyautogui.press('{}', presses={})".format(button, press_times)
 
+    def __working_with_leading_tabs(self, new_tabs_count: int, tabs_count: int) -> str:
+        # Adds tabs on increase of tab-indents on next line
+        if new_tabs_count > tabs_count:
+            return self.__press_special_button(self.TAB, new_tabs_count - tabs_count)
+        # Deletes tabs on decrease of tab-indents on next line
+        if new_tabs_count < tabs_count:
+            return self.__press_special_button(self.BACKSPACE, tabs_count - new_tabs_count)
+
+    def __working_with_leading_spaces(self, new_leading_spaces_count: int, leading_spaces_count: int,
+                                      typing_speed: float) -> str:
+        if new_leading_spaces_count > leading_spaces_count:
+            return self.__write_line(" " * (new_leading_spaces_count - leading_spaces_count), typing_speed)
+
+        if new_leading_spaces_count < leading_spaces_count:
+            return self.__press_special_button(self.BACKSPACE,
+                                               leading_spaces_count - new_leading_spaces_count)
+
+    @staticmethod
+    def __write_line(text: str, typing_speed: float):
+        return "pyautogui.write('{}', interval={})".format(text, typing_speed)
+
     def change_txt_for_rpa_engine(self,
                                   change_following_tabs: bool = True,
                                   remove_leading_spaces: bool = True,
@@ -94,8 +116,6 @@ class TypeTextOnScreen:
 
         output_list = []
 
-        write_line = "pyautogui.write('{}', interval=" + str(typing_speed) + ")"
-
         lines = self.__read_txt_file()
 
         tabs_count = 0
@@ -108,37 +128,33 @@ class TypeTextOnScreen:
                 new_tabs_count = re.match(r"\s*", line).group().count("\t")
 
                 # Adds tabs on increase of tab-indents on next line
-                if new_tabs_count > tabs_count:
-                    output_list.append(self.__press_special_button(self.TAB, new_tabs_count - tabs_count))
                 # Deletes tabs on decrease of tab-indents on next line
-                if new_tabs_count < tabs_count:
-                    output_list.append(self.__press_special_button(self.BACKSPACE, tabs_count - new_tabs_count))
+                output_list.append(self.__working_with_leading_tabs(new_tabs_count, tabs_count))
 
                 tabs_count = new_tabs_count
 
             if remove_leading_spaces:
-                # Deletes leading spaces
+                # Deletes leading spaces if needed
                 new_leading_spaces_count = re.match(r"\s*", line).group().count(" ")
 
-                if new_leading_spaces_count > leading_spaces_count:
-                    output_list.append(write_line.format(" " * (new_leading_spaces_count - leading_spaces_count)))
-
-                if new_leading_spaces_count < leading_spaces_count:
-                    output_list.append(self.__press_special_button(self.BACKSPACE,
-                                                                   leading_spaces_count - new_leading_spaces_count))
+                output_list.append(self.__working_with_leading_spaces(new_leading_spaces_count, leading_spaces_count,
+                                                                      typing_speed))
 
                 leading_spaces_count = new_leading_spaces_count
 
             split_in_tokens = re.split('([\t\n])', line.lstrip())
 
             for token in split_in_tokens:
+                if len(split_in_tokens) == 1 and token == "":
+                    output_list.append(self.__press_special_button(self.ENTER))
+
                 if token == "":
                     continue
 
                 if token in self.CHARACTER_CHANGE_CHARS_TO_RPA_COMMANDS:
                     output_list.append(self.__press_special_button(self.CHARACTER_CHANGE_CHARS_TO_RPA_COMMANDS[token]))
                 else:
-                    output_list.append(write_line.format(token))
+                    output_list.append(self.__write_line(token, typing_speed))
 
         return output_list
 
@@ -147,7 +163,6 @@ class TypeTextOnScreen:
         lines = self.change_txt_for_rpa_engine()
 
         with open(self.save_file_path, 'a') as the_file:
-
             the_file.write("import pyautogui\n")
             the_file.write("import time\n")
             the_file.write("time.sleep(5)\n")
@@ -163,3 +178,4 @@ if __name__ == "__main__":
     test = TypeTextOnScreen(input_path, output_path)
     test.write_file()
 
+    print(re.split('([\t\n])', "\n".lstrip()))
