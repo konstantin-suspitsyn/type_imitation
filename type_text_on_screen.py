@@ -1,4 +1,5 @@
 import re
+from typing import Optional
 
 
 class TypeTextOnScreen:
@@ -18,14 +19,20 @@ class TypeTextOnScreen:
         "\t": TAB,
     }
 
-    def __init__(self, open_file_path: str, save_file_path: str) -> None:
+    def __init__(self, open_file_path: str, save_file_path: str, ide_auto_fill: Optional[list] = None) -> None:
         """
         Get path of files to open and to save
-        :param save_file_path:
-        :param open_file_path:
+        :param save_file_path: path where to save instructions
+        :param open_file_path: path of base file to open
+        :param ide_auto_fill: if you are using IDE after pressing space IDE can replace your word with IDE token.
+
+                              List should contain tokens. If word starts with token ESC will be added before space
+                              or enter
         """
         self.save_file_path = save_file_path
         self.open_file_path = open_file_path
+
+        self.ide_auto_fill = ide_auto_fill
 
     def __read_txt_file(self) -> list:
         """
@@ -38,6 +45,10 @@ class TypeTextOnScreen:
         return lines
 
     def __get_splitter(self) -> list:
+        """
+        Gets splitters to press enter or other key
+        :return: list of splitters
+        """
         return [s for s in self.CHARACTER_CHANGE_CHARS_TO_RPA_COMMANDS]
 
     @staticmethod
@@ -95,12 +106,36 @@ class TypeTextOnScreen:
     def __write_line(text: str, typing_speed: float):
         return "pyautogui.write('{}', interval={})".format(text, typing_speed)
 
+    def __split_token_to_esc(self, token: str) -> list[str]:
+        final_list = []
+        if self.ide_auto_fill is None:
+            return final_list.append(token)
+
+        if not any(exchange_key in token for exchange_key in self.ide_auto_fill):
+            return final_list.append(token)
+
+        new_tokens = re.split("([\s\t])", token)
+
+        basic_string = ""
+
+        for word in new_tokens:
+            basic_string = basic_string + str(word)
+            if word.startswith(tuple(self.ide_auto_fill)):
+                final_list.append(basic_string)
+                final_list.append(self.__press_special_button(self.ESC))
+                basic_string = ""
+
+        if basic_string != "":
+            final_list.append(basic_string)
+
+        return final_list
+
     def change_txt_for_rpa_engine(self,
                                   change_following_tabs: bool = True,
                                   remove_leading_spaces: bool = True,
                                   typing_speed: float = 0.25) -> list:
         """
-        Creates list of command instructions for pyautogui
+       Creates list of command instructions for pyautogui
 
         :param change_following_tabs: will add tabs if tabs indents increase next line and decrease if tabs decrease
         :param remove_leading_spaces: removes leading spaces
@@ -124,7 +159,6 @@ class TypeTextOnScreen:
         for line in lines:
 
             if change_following_tabs:
-
                 new_tabs_count = re.match(r"\s*", line).group().count("\t")
 
                 # Adds tabs on increase of tab-indents on next line
@@ -154,7 +188,8 @@ class TypeTextOnScreen:
                 if token in self.CHARACTER_CHANGE_CHARS_TO_RPA_COMMANDS:
                     output_list.append(self.__press_special_button(self.CHARACTER_CHANGE_CHARS_TO_RPA_COMMANDS[token]))
                 else:
-                    output_list.append(self.__write_line(token, typing_speed))
+                    for split_token in self.__split_token_to_esc(self, token):
+                        output_list.append(self.__write_line(split_token, typing_speed))
 
         return output_list
 
