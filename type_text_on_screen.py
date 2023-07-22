@@ -109,10 +109,12 @@ class TypeTextOnScreen:
     def __split_token_to_esc(self, token: str) -> list[str]:
         final_list = []
         if self.ide_auto_fill is None:
-            return final_list.append(token)
+            final_list.append(token)
+            return final_list
 
         if not any(exchange_key in token for exchange_key in self.ide_auto_fill):
-            return final_list.append(token)
+            final_list.append(token)
+            return final_list
 
         new_tokens = re.split("([\s\t])", token)
 
@@ -188,7 +190,7 @@ class TypeTextOnScreen:
                 if token in self.CHARACTER_CHANGE_CHARS_TO_RPA_COMMANDS:
                     output_list.append(self.__press_special_button(self.CHARACTER_CHANGE_CHARS_TO_RPA_COMMANDS[token]))
                 else:
-                    for split_token in self.__split_token_to_esc(self, token):
+                    for split_token in self.__split_token_to_esc(token):
                         output_list.append(self.__write_line(split_token, typing_speed))
 
         return output_list
